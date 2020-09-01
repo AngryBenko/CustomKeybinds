@@ -63,8 +63,8 @@ HKLastHotkey := 0			; Time that Escape was pressed to exit key binding. Used to 
 DefaultHKObject := {hkp: "", typep: "", hks: "", types: ""}
 
 ; Misc vars
-Title := "FLIDE 3D LG Helper v2.0"
-DisplayVar := ["Type Lane", "Type Left-Bounded", "Type Right-Bounded", "Type Connection", "Type Bidirectional", "Type Roundabout", "Type Guide", "Spline", "Reverse Direction", "Connection Tool"]
+Title := "Custom Keybinds"
+DisplayVar := ["Shortcut1", "Shortcut2", "Shortcut3", "Shortcut4", "Shortcut5", "Shortcut6", "Shortcut7", "Shortcut8", "Shortcut9", "Shortcut10"]
 DisplayDefault := ["i", "[", "j"]
 DisplayFN := ["J", "K", "L", "U", "I", "O", "7"]
 ININame := BuildIniName()
