@@ -27,13 +27,17 @@
 ; 68  048   Numpad8/NumpadUp
 ; 69  049   Numpad9/NumpadPgUp
 ;--------- TO-DO ------------
-; - Microsoft teams mute to special (drop down menu?) a new shortcut?
+; - [DONE] Microsoft teams mute to special (drop down menu?) a new shortcut?
 ; - Implement UI Switch to toggle ; iter through types
 ; - Add content to help menu
 ; 	- Link to documentation
-; - [DONE] Add restrictions to special keybind. (pressing g will show Thumb2 but will still give G the keybind)
 ; - [DONE?] Look into removing prefix as we may want to block some original functions
-; - Add option to use thumb2 over thumb1
+; 	- [DONE]Might have to block/remove prefix as "~" original function is removed
+; - [DONE]Add option to use thumb2 over thumb1
+; - [DONE?]Add option to use Tab, or multi keys (Shift+B)
+; 	- [DONE] Enable use of Tab
+; 	- [DONE] Added restriction for (SPECIAL) if secondary is empty
+; - [DONE] Clean up EnableHotkeys() -- redundant code
 ;----------------------------
 ; Build list of "End Keys" for Input command
 EXTRA_KEY_LIST := "{Escape}"	; DO NOT REMOVE! - Used to quit binding
@@ -58,24 +62,26 @@ EXTRA_KEY_LIST .= "{Tab}{Enter}{Backspace}"
 ;EXTRA_KEY_LIST .= "{Launch_Mail}{Launch_Media}{Launch_App1}{Launch_App2}"
 
 ; BindMode vars
-HKLastHotkey := 0			; Time that Escape was pressed to exit key binding. Used to determine if Escape is held (Clear binding)
-;DefaultHKObject := {hk: "", type: ""}
+HKLastHotkey := 0 ; Time that Escape was pressed to exit key binding. Used to determine if Escape is held (Clear binding)
 DefaultHKObject := {hkp: "", typep: "", hks: "", types: ""}
 
 ; Misc vars
 Title := "Custom Keybinds"
-DisplayVar := ["Shortcut1", "Shortcut2", "Shortcut3", "Shortcut4", "Shortcut5", "Shortcut6", "Shortcut7", "Shortcut8", "Shortcut9", "Shortcut10"]
-DisplayDefault := ["i", "[", "j"]
+DisplayVar := ["Shortcut1", "Shortcut2", "Shortcut3", "Shortcut4", "Shortcut5", "Shortcut6", "Shortcut7", "Shortcut8", "Shortcut9", "Shortcut10", "Shortcut11"]
+DisplayDefault := ["i", "[", "j", "Shift + B"]
 DisplayFN := ["J", "K", "L", "U", "I", "O", "7"]
 ININame := BuildIniName()
 HotkeyList := []
-laptopCheck := 0
-NumHotkeys := 11
+modCheck := 2
+specialCheck := 0
+NumHotkeys := 12
 global typeCounter := 0
 
 ; Create the GUI, using a Loop feature that auto updates the GUI
 ;Gui, 1: Add, Text,, This demo allows you to bind up to %NumHotkeys% Hotkeys and test them.`nHotkeys are remembered between runs.
-general .= "Welcome to FLIDE 3D LG Helper Script!`n"
+general .= "Welcome to "
+general .= title
+general .= "!`n"
 general .= "Press the shortcuts below to apply types or to select tool.`n"
 general .= "If you do not have extra mouse buttons, check 'Laptop Only' box.` This will use Middle Mouse combo.`n"
 general .= "To edit/setup shortcuts, go to File -> Edit Keybinds."
@@ -93,14 +99,18 @@ Gui, 1: Add, Text, cBlack x11 y65, %important%
 Gui, 1: Font, s10 normal, Segoe UI
 Gui, 1: Add, Text, cBlack yp+20 x60, Primary
 Gui, 1: Add, Text, cBlack yp xp+125, Secondary
-Gui, 1: Add, Checkbox, vLaptop gLaptop yp xp+150, Laptop only
+;Gui, 1: Add, Radio, vLaptop gLaptop yp xp+150, Laptop only
+;Gui, 1: Add, Radio, vSwap gSwap yp xp+100, Swap Thumbs
+Gui, 1: Add, Radio, vModGroup gModCheck Group yp xp+150 , Middle
+Gui, 1: Add, Radio, gModCheck yp xp+70 Checked , Thumb1
+Gui, 1: Add, Radio, gModCheck yp xp+80 , Thumb2
 ;Gui, 1:+AlwaysOnTop
 ypos := 105
 
 Loop % NumHotkeys {
-	if (A_Index != 11) {
+	if (A_Index != NumHotkeys) {
 		displayType := DisplayVar[A_Index]
-		if (A_Index == 8 || A_Index == 9 || A_Index == 10) {
+		if (A_Index >= 8) {
 			displayShort := DisplayDefault[A_Index - 7]
 			Gui, 1: Add, Text, cBlack x5 y%ypos%, (LG)
 			Gui, 1: Font, s8, Segoe UI
@@ -112,7 +122,11 @@ Loop % NumHotkeys {
 			Gui, 1: Font, s10 bold, Segoe UI
 			Gui, 1: Add, Text, cBlack y%ypos% xp+115, %displayShort%
 			Gui, 1: Font, s10 normal, Segoe UI
-			Gui, 1: Add, Text, cBlack y%ypos% xp+13, = %displayType%
+			if (A_Index == 11) {
+				Gui, 1: Add, Text, cBlack y%ypos% xp+60, = %displayType%
+			} else {
+				Gui, 1: Add, Text, cBlack y%ypos% xp+13, = %displayType%
+			}
 		} else {
 			displayF := DisplayFN[A_Index]
 			Gui, 1: Add, Text, cBlack x5 y%ypos%, (LG)
@@ -136,6 +150,7 @@ Loop % NumHotkeys {
 		Gui, 1: Add, Text, cBlack y%ypos% xp+90, =
 		Gui, 1: Font, s8, Segoe UI
 		Gui, 1: Add, Edit, Disabled vHotkeyName2%A_Index% w80 yp-1 xp+25, None
+		Gui, 1: Add, DropDownList, vSpecialChoice gSpecialChoice AltSubmit yp xp+100, Custom|MSTeam Mute
 	}
 	;Gui, 1: Add, Button, gBind vBind%A_Index% yp-1 xp+110, Set Hotkey
 	;Gui, 1: Add, Button, gReset vReset%A_Index% xp+90, Reset Key
@@ -171,7 +186,7 @@ return ;
 	ypos := 70
 	; The GUI that allows editing of keybinds
 	Loop % NumHotkeys {
-		if (A_Index != 11) {
+		if (A_Index != NumHotkeys) {
 			displayType := DisplayVar[A_Index]
 			Gui, 2: Font, s10, Segoe UI
 			Gui, 2: Add, Text, cBlack x5 y%ypos%, (LG) %displayType%
@@ -229,14 +244,28 @@ GuiClose:
 	ExitApp
 	return
 
-Laptop:
-	global laptopCheck
+ModCheck:
+	global modCheck
 
 	Gui, Submit, NoHide
 
-	laptopCheck := Laptop
-	
-	; Test if laptopCheck is checked - change keybinds if TRUE
+	modCheck := ModGroup
+
+	DisableHotkeys()
+	ModifyOptions()
+	OptionChanged()
+	UpdateHotkeyControls()
+	return
+
+SpecialChoice:
+	global specialCheck
+
+	Gui, Submit, Nohide
+
+	specialCheck := SpecialChoice
+
+	;FileAppend SPECIAL: %specialCheck%`n, *
+
 	DisableHotkeys()
 	ModifyOptions()
 	OptionChanged()
@@ -290,8 +319,15 @@ DoHotkey10: ; Connection Tool
 	return
 DoHotkey11: ; Special
 	;soundbeep
-	special()
+	msgbox You pressed Hotkey 11.
 	;teamsmute()
+	return
+DoHotkey12:
+	special()
+	return
+TeamsMute:
+	;teamsmute()
+	msgbox TEAMSMUTE
 	return
 
 ; Something changed - rebuild
@@ -311,55 +347,55 @@ OptionChanged(){
 	return
 }
 
+getRadio() {
+	global modCheck
+
+	if (modCheck == 1) {
+		return 1
+	} else if (modCheck == 2) {
+		return 2
+	} else if (modCheck == 3) {
+		return 3
+	}
+}
+
 ModifyOptions() {
 	global HotkeyList
-	global laptopCheck
+	global modCheck
+	global NumHotkeys
+	global specialCheck
 
 	; Check for INI
+	; 1 = Middle, 2 = Thumb1, 3 = Thumb2
 
 	Loop % HotkeyList.MaxIndex() {
 		tmphkp := HotkeyList[A_Index].hkp
 		tmphks := HotkeyList[A_Index].hks
 		
-		if (A_Index != 11) {
+		if (A_Index != NumHotkeys) {
 			outhkp := ""
 			outhks := ""
-			if (laptopCheck) {
-				FileAppend BOTH: %A_Index% | %tmphkp% AND %tmphks%`n, *
-				if (tmphkp != "" && tmphks != "") {
-					tmphkp := substr(tmphkp, 12)
-					tmphks := substr(tmphks, 12)
-					outhkp := BuildHotkeyStringAlt(tmphkp, 1)
-					outhks := BuildHotkeyStringAlt(tmphks, 1)
-					HotkeyList[A_Index].hkp := outhkp
-					HotkeyList[A_Index].hks := outhks
-				} else if (tmphkp != "") {
-					tmphkp := substr(tmphkp, 12)
-					outhkp := BuildHotkeyStringAlt(tmphkp, 1)
-					HotkeyList[A_Index].hkp := outhkp
-				} else if (tmphks != "") {
-					tmphks := substr(tmphks, 12)
-					outhks := BuildHotkeyStringAlt(tmphks, 1)
-					HotkeyList[A_Index].hks := outhks
-				}
-			} else {
-				if (tmphkp != "" && tmphks != "") {
-					tmphkp := substr(tmphkp, 11)
-					tmphks := substr(tmphks, 11)
-					outhkp := BuildHotkeyStringAlt(tmphkp, 0)
-					outhks := BuildHotkeyStringAlt(tmphks, 0)
-					HotkeyList[A_Index].hkp := outhkp
-					HotkeyList[A_Index].hks := outhks
-				} else if (tmphkp != "") {
-					tmphkp := substr(tmphkp, 11)
-					outhkp := BuildHotkeyStringAlt(tmphkp, 0)
-					HotkeyList[A_Index].hkp := outhkp
-				} else if (tmphks != ""){
-					tmphks := substr(tmphks, 11)
-					outhks := BuildHotkeyStringAlt(tmphks, 0)
-					HotkeyList[A_Index].hks := outhks
-				}
-				; Change keybinds to Thumb Button 1
+			FileAppend BOTH: %A_Index% | %tmphkp% AND %tmphks%`n, *
+			if (tmphkp != "" && tmphks != "") {
+				tmphkp := substr(tmphkp, 12)
+				tmphks := substr(tmphks, 12)
+				outhkp := BuildHotkeyString(tmphkp, modCheck)
+				outhks := BuildHotkeyString(tmphks, modCheck)
+				HotkeyList[A_Index].hkp := outhkp
+				HotkeyList[A_Index].hks := outhks
+
+				HotkeyList[A_Index].typep := modCheck
+				HotkeyList[A_Index].types := modCheck
+			} else if (tmphkp != "") {
+				tmphkp := substr(tmphkp, 12)
+				outhkp := BuildHotkeyString(tmphkp, modCheck)
+				HotkeyList[A_Index].hkp := outhkp
+				HotkeyList[A_Index].typep := modCheck
+			} else if (tmphks != ""){
+				tmphks := substr(tmphks, 12)
+				outhks := BuildHotkeyString(tmphks, modCheck)
+				HotkeyList[A_Index].hks := outhks
+				HotkeyList[A_Index].types := modCheck
 			}
 			; Now we have to update the hotkey list
 		}
@@ -390,16 +426,12 @@ Bind(ctrlnum, select){
 	global HotkeyList
 	global HKControlType
 	global HKSecondaryInput
-	global laptopCheck
+	global modCheck
+	global NumHotkeys
 
 	; init vars
-	if (laptopCheck == 1) {
-		;HKControlType := 1
-	} else {
-		;HKControlType := 0
-	}
 	HKControlType := 0
-
+	
 	; Disable existing hotkeys
 	DisableHotkeys()
 
@@ -432,7 +464,7 @@ Bind(ctrlnum, select){
 		if (substr(ErrorLevel, 1, 7) == "EndKey:"){
 			tmp := substr(ErrorLevel, 8)
 			detectedkey := tmp
-			if (tmp == "Tab") {
+			if (tmp == "Backspace") {
 				continue
 			} else if (tmp == "Escape") {
 				if (HKControlType > 0) {
@@ -446,7 +478,7 @@ Bind(ctrlnum, select){
 		} else {
 			break
 		}
-	} Until (tmp != "Tab" && tmp != "Backspace")
+	} Until (tmp != "Backspace")
 
 	; Hide prompt
 	Gui, 3:Submit
@@ -462,22 +494,25 @@ Bind(ctrlnum, select){
 	if (detectedkey){
 		; Update the hotkey object
 		;outhk := BuildHotkeyString(detectedkey,HKControlType)
-		if (ctrlnum == 11) {
-			HKControlType := 2
-		} else if (laptopCheck == 1) {
-			HKControlType := 1
+		FileAppend TypeB: %HKControlType%`n, *
+		HKControlType := modCheck
+		FileAppend RADIO: %modCheck%`n, *
+		
+		if (ctrlnum == NumHotkeys) {
+			HKControlType := 4
 		}
-		FileAppend Type: %HKControlType%`n, *
-		outhk := BuildHotkeyStringAlt(detectedkey,HKControlType)
+		
+		FileAppend TypeA: %HKControlType%`n, *
+		outhk := BuildHotkeyString(detectedkey,HKControlType)
 		tmp := {hk: outhk, type: HKControlType, status: 0}
 		clash := 0
 		prevent := 0
 		Loop % HotkeyList.MaxIndex(){
-			if (detectedkey == "enter" && ctrlnum != 11) { ; Add prevention for special keybinds to only take thumb2
+			if (detectedkey == "enter" && ctrlnum != NumHotkeys) { ; Add prevention for special keybinds to only take thumb2
 				prevent := 1
-			} else if (ctrlnum == 11 && detectedkey != "enter") {
+			} else if (ctrlnum == NumHotkeys && detectedkey != "enter") {
 				if (detectedkey != "xbutton1" && detectedkey != "xbutton2") {
-					prevent := 2
+					;prevent := 2
 				}
 			}
 			if (StripPrefix(HotkeyList[A_Index].hkp) == StripPrefix(tmp.hk) || StripPrefix(HotkeyList[A_Index].hks) == StripPrefix(tmp.hk)){
@@ -492,6 +527,8 @@ Bind(ctrlnum, select){
 			msgbox 'Enter' key is reserved for special keybind. Exiting...
 		} else if (prevent == 2) {
 			msgbox %detectedkey% is restricted with special keybind. Exiting...
+		} else if (specialCheck == 2 && select == 2) {
+			msgbox Please select 'Custom' from drop down list if you want to use secondary keybind for (Special)
 		} else if (clash) {
 			; Ask if want to overwrite - Need Shortcut, keybind(s) OLD/NEW
 			msgbox You cannot bind the same hotkey to two different actions. Exiting...
@@ -531,6 +568,7 @@ DeleteHotkey(hk){
 
 	soundbeep
 	DisableHotkeys()
+
 	HotkeyList[hk] := DefaultHKObject
 
 	OptionChanged()
@@ -546,6 +584,9 @@ EscapeReleased:
 ; Enables User-Defined Hotkeys
 EnableHotkeys(){
 	global HotkeyList
+	global NumHotkeys
+	global specialCheck
+
 	Loop % HotkeyList.MaxIndex(){
 		status := HotkeyList[A_Index].status
 		hkp := HotkeyList[A_Index].hkp
@@ -555,7 +596,7 @@ EnableHotkeys(){
 			FileAppend hkp: %hkp%`n, *
 			FileAppend hks: %hks%`n, *
 			prefix := BuildPrefix(HotkeyList[A_Index])
-			if (A_Index != 11) {
+			if (A_Index != NumHotkeys) {
 				if (hkp != "" && hks != "") {
 					hotkey, %hkp%, DoHotkey%A_Index%, ON
 					hotkey, %hks%, DoHotkey%A_Index%, ON
@@ -563,19 +604,25 @@ EnableHotkeys(){
 					;prefix := BuildPrefix(HotkeyList[A_Index])
 					;Msgbox % "ADDING: " prefix "," hk
 					hotkey, %hkp%, DoHotkey%A_Index%, ON
-					; Geting error that "" is not a valid hotkey - all empty hotkeys had "~", now it is actually "" Perhaps use wildcard *?, Could also use "~" for empty hotkeys
-					hotkey, %prefix%%hks%, DoHotkey%A_Index%, ON
+					;hotkey, %prefix%%hks%, DoHotkey%A_Index%, ON
 				} else if (hks != "") {
 					;prefix := BuildPrefix(HotkeyList[A_Index])
 					;Msgbox % "ADDING: " prefix "," hk
-					hotkey, %prefix%%hkp%, DoHotkey%A_Index%, ON
-					; Geting error that "" is not a valid hotkey - all empty hotkeys had "~", now it is actually "" Perhaps use wildcard *?, Could also use "~" for empty hotkeys
+					;hotkey, %prefix%%hkp%, DoHotkey%A_Index%, ON
 					hotkey, %hks%, DoHotkey%A_Index%, ON
 				}
-				
 			} else {
+				if (hkp != "") {
+					if (specialCheck == 2) {
+						hotkey, %hkp%, TeamsMute, ON
+					} else {
+						hotkey, %hkp%, DoHotkey%A_Index%, ON
+					}
+					
+					;hotkey, %prefix%%hkp%, DoHotkey%A_Index%, ON
+				}
 				;prefix := BuildPrefix(HotkeyList[A_Index])
-				hotkey, %hkp%, DoHotkey%A_Index%, ON
+				;hotkey, %hkp%, DoHotkey%A_Index%, ON
 			}
 			HotkeyList[A_Index].status := 1
 		}
@@ -596,16 +643,21 @@ DisableHotkeys(){
 			FileAppend hkp: %hkp%`n, *
 			FileAppend hks: %hks%`n, *
 			prefix := BuildPrefix(HotkeyList[A_Index])
-			if (hkp != "") {
+			if (hkp != "" && hks != "") {
 				;Msgbox % "REMOVING: " prefix "," hk
 				hotkey, %hkp%, DoHotkey%A_Index%, OFF
-				hotkey, %prefix%%hks%, DoHotkey%A_Index%, OFF
+				hotkey, %hks%, DoHotkey%A_Index%, OFF
+				;hotkey, %prefix%%hks%, DoHotkey%A_Index%, OFF
+				;hotkey, %hk%, DoHotkey%A_Index%, OFF
+			} else if (hkp != "") {
+				;Msgbox % "REMOVING: " prefix "," hk
+				;hotkey, %prefix%%hkp%, DoHotkey%A_Index%, OFF
+				hotkey, %hkp%, DoHotkey%A_Index%, OFF
 				;hotkey, %hk%, DoHotkey%A_Index%, OFF
 			} else if (hks != "") {
-				;Msgbox % "REMOVING: " prefix "," hk
-				hotkey, %prefix%%hkp%, DoHotkey%A_Index%, OFF
+				;FileAppend special: %hks%`n, *
+				;hotkey, %hkp%, DoHotkey%A_Index%, OFF
 				hotkey, %hks%, DoHotkey%A_Index%, OFF
-				;hotkey, %hk%, DoHotkey%A_Index%, OFF
 			}
 			HotkeyList[A_Index].status := 0
 		}
@@ -640,10 +692,13 @@ SaveSettings(){
 	global ININame
 	global NumHotkeys
 	global HotkeyList
-	global laptopCheck
+	global modCheck
+	global specialCheck
 
-	iniwrite, %laptopCheck%, %ININame%, Version, laptop
-
+	;iniwrite, %swapCheck%, %ININame%, Version, swap
+	;iniwrite, %laptopCheck%, %ININame%, Version, laptop
+	iniwrite, %modCheck%, %ININame%, Version, radio
+	iniwrite, %specialCheck%, %ININame%, Version, special
 	Loop % HotkeyList.MaxIndex(){
 		hkp := HotkeyList[A_Index].hkp
 		typep := HotkeyList[A_Index].typep
@@ -668,11 +723,27 @@ LoadSettings(){
 	global NumHotkeys
 	global HotkeyList
 	global DefaultHKObject
-	global laptopCheck
+	global modCheck
+	global specialCheck
 
-	IniRead, laptopValue, %ININame%, Version, laptop
+	;IniRead, laptopValue, %ININame%, Version, laptop
+	;IniRead, swapValue, %ININame%, Version, swap
+	IniRead, radioValue, %ININame%, Version, radio
+	IniRead, specialValue, %ININame%, Version, special
 	if (laptopValue != "ERROR") {
 		laptopCheck := laptopValue
+	}
+
+	if (swapValue != "ERROR") {
+		swapCheck := swapValue
+	}
+
+	if (radioValue != "ERROR") {
+		modCheck := radioValue
+	}
+
+	if (specialValue != "ERROR") {
+		specialCheck := specialValue
 	}
 
 	Loop % NumHotkeys {
@@ -702,131 +773,132 @@ LoadSettings(){
 ; Added HotKeyName2 for secondary keybinds
 UpdateHotkeyControls(){
 	global HotkeyList
-	global laptopCheck
+	global modCheck
+	global specialCheck
+	global NumHotkeys
 
 	GuiControl, 1: , Laptop, %laptopCheck%
+	GuiControl, 1: , Swap, %swapCheck%
+	GuiControl, 1: , Button%modCheck%, 1
+	GuiControl, Choose, SpecialChoice, %specialCheck%
 
 	Loop % HotkeyList.MaxIndex(){
 		;tmp1 := BuildHotkeyName(HotkeyList[A_Index].hkp, HotkeyList[A_index].typep)
 		;tmp2 := BuildHotkeyName(HotkeyList[A_Index].hks, HotkeyList[A_index].types)
-		tmp1 := BuildHotkeyNameAlt(HotkeyList[A_Index].hkp, HotkeyList[A_index].typep)
-		tmp2 := BuildHotkeyNameAlt(HotkeyList[A_Index].hks, HotkeyList[A_index].types)
+		tmp1 := BuildHotKeyName(HotkeyList[A_Index].hkp, HotkeyList[A_index].typep)
+		tmp2 := BuildHotKeyName(HotkeyList[A_Index].hks, HotkeyList[A_index].types)
 
-		if (HotkeyList[A_Index].hkp != "" && HotkeyList[A_Index].hks != ""){
-			GuiControl, 1: , HotkeyName1%A_Index%, %tmp1%
-			GuiControl, 1: , HotkeyName2%A_Index%, %tmp2%
-			GuiControl, 2: , HotkeyName1%A_Index%, %tmp1%
-			GuiControl, 2: , HotkeyName2%A_Index%, %tmp2%
-		} else if (HotkeyList[A_Index].hkp != "") {
-			GuiControl, 1: , HotkeyName1%A_Index%, %tmp1%
-			GuiControl, 1: , HotkeyName2%A_Index%, None
-			GuiControl, 2: , HotkeyName1%A_Index%, %tmp1%
-			GuiControl, 2: , HotkeyName2%A_Index%, None
-		} else if (HotkeyList[A_Index].hks != "") {
-			GuiControl, 1: , HotkeyName1%A_Index%, None
-			GuiControl, 1: , HotkeyName2%A_Index%, %tmp2%
-			GuiControl, 2: , HotkeyName1%A_Index%, None
-			GuiControl, 2: , HotkeyName2%A_Index%, %tmp2%
+		if (specialCheck == 2 && A_Index == NumHotkeys) {
+			GuiControl, 1: , Hotkeyname2%A_Index%, None
+			GuiControl, 2: , Hotkeyname2%A_Index%, None
 		} else {
-			GuiControl, 1: , HotkeyName1%A_Index%, None
-			GuiControl, 1: , HotkeyName2%A_Index%, None
-			GuiControl, 2: , HotkeyName1%A_Index%, None
-			GuiControl, 2: , HotkeyName2%A_Index%, None
+			if (HotkeyList[A_Index].hkp != "" && HotkeyList[A_Index].hks != ""){
+				GuiControl, 1: , HotkeyName1%A_Index%, %tmp1%
+				GuiControl, 1: , HotkeyName2%A_Index%, %tmp2%
+				GuiControl, 2: , HotkeyName1%A_Index%, %tmp1%
+				GuiControl, 2: , HotkeyName2%A_Index%, %tmp2%
+			} else if (HotkeyList[A_Index].hkp != "") {
+				GuiControl, 1: , HotkeyName1%A_Index%, %tmp1%
+				GuiControl, 1: , HotkeyName2%A_Index%, None
+				GuiControl, 2: , HotkeyName1%A_Index%, %tmp1%
+				GuiControl, 2: , HotkeyName2%A_Index%, None
+			} else if (HotkeyList[A_Index].hks != "") {
+				GuiControl, 1: , HotkeyName1%A_Index%, None
+				GuiControl, 1: , HotkeyName2%A_Index%, %tmp2%
+				GuiControl, 2: , HotkeyName1%A_Index%, None
+				GuiControl, 2: , HotkeyName2%A_Index%, %tmp2%
+			} else {
+				GuiControl, 1: , HotkeyName1%A_Index%, None
+				GuiControl, 1: , HotkeyName2%A_Index%, None
+				GuiControl, 2: , HotkeyName1%A_Index%, None
+				GuiControl, 2: , HotkeyName2%A_Index%, None
+			}
 		}
+		
 		;tmp := HotkeyList[A_Index].block
 		;GuiControl,, Block%A_Index%, %tmp%
 	}
+	return
 }
 
-; Builds an AHK String (eg "^c" for CTRL + C) from the last detected hotkey
 BuildHotkeyString(str, type := 0){
-	if (type == 2 || type == 3) {
-		outhk := str
-	} else {
-		outhk := "xbutton2 & "
-		outhk .= str
-	}
-
-	return outhk
-}
-
-BuildHotkeyStringAlt(str, type := 0){
 	FileAppend String: %str%`n, *
-	if (type == 2) { ; Reserved for SPECIAL
+	if (type == 4) { ; Reserved for SPECIAL
 		outhk := str
-	} else if (type == 1) {
-		outhk := "mbutton & "
+	} else if (type == 1) { ; Middle
+		outhk := "mbutton  & "
 		outhk .= str
-	} else {
-
+	} else if (type == 2) { ; Thumb1
 		outhk := "xbutton2 & "
+		if (str == "xbutton2") {
+			str := "xbutton1"
+		}
+		outhk .= str
+	} else if (type == 3) { ; Thumb2
+		outhk := "xbutton1 & "
+		if (str == "xbutton1") {
+			str := "xbutton2"
+		}
 		outhk .= str
 	}
 
 	return outhk
 }
 
-; Builds a Human-Readable form of a Hotkey string (eg "^C" -> "CTRL + C")
-BuildHotkeyName(hk, ctrltype){
+BuildHotKeyName(hk, ctrltype){
 	outstr := ""
-	stringupper, hk, hk
-
-	if (ctrltype == 2) {
-		if (hk == "ENTER") {
+	;stringupper, hk, hk
+	if (ctrltype == 4) { ; RESERVERD FOR SPECIAL
+		if (hk == "xbutton1") {
+			outstr := "Thumb2"
+		} else if (hk == "xbutton2") {
+			outstr := "Thumb1"
+		} else if (hk == "enter") {
 			outstr := "Enter"
 		} else {
-			outstr := "Thumb2"
+			stringupper, hk, hk
+			outstr := hk
 		}
-	} else {
-		outstr := "Thumb1 + "
-		tmp2 := substr(hk, 12)
-		
-		outstr .= tmp2
-	}
-
-	return outstr
-}
-
-BuildHotkeyNameAlt(hk, ctrltype){
-	outstr := ""
-	stringupper, hk, hk
-
-	if (ctrltype == 2) { ; RESERVERD FOR SPECIAL
-		if (hk == "ENTER") {
-			outstr := "Enter"
-		} else {
-			outstr := "Thumb2"
-		}
-	} else {
-		tmp := substr(hk, 1, 2)
-		if (tmp == "MB") {
+	} else  {
+		if (ctrltype == 1) {
 			outstr := "Middle + "
-			tmp2 := substr(hk, 11)
-			if (tmp2 == "XBUTTON1") {
+			tmp2 := substr(hk, 12)
+			if (tmp2 == "xbutton1") { ; handle thumb2 paired with m,x1,x2
 				tmp2 := "Thumb2"
+			} else if (tmp2 == "xbutton2") {
+				tmp2 := "Thumb1"
 			}
-		} else {
+		} else if (ctrltype == 2) {
 			outstr := "Thumb1 + "
 			tmp2 := substr(hk, 12)
-			if (tmp2 == "XBUTTON1") {
+			if (tmp2 == "xbutton1") {
 				tmp2 := "Thumb2"
+			} else if (tmp2 == "xbutton2") {
+				tmp2 := "Thumb1"
+			}
+		} else if (ctrltype == 3) {
+			outstr := "Thumb2 + "
+			tmp2 := substr(hk, 12)
+			if (tmp2 == "xbutton1") {
+				tmp2 := "Thumb2"
+			} else if (tmp2 == "xbutton2") {
+				tmp2 := "Thumb1"
 			}
 		}
-		
 		outstr .= tmp2
 	}
-
 	return outstr
 }
 
 #If BindMode ; This is will allow xbutton1 and enter to be solo keybinds
 	xbutton1::
-		HKControlType := 3
+	xbutton2::
+		HKControlType := 4
 		HKSecondaryInput := A_ThisHotkey
 		Send {Escape}
 		return
 	enter::
-		HKControlType := 2
+		HKControlType := 4
 		HKSecondaryInput := A_ThisHotkey
 		Send {Escape}
 		return
@@ -863,9 +935,16 @@ shortcut(x) {
 
 special() {
 	global HotkeyList
-	sec := HotkeyList[11].hks
-	;Send, {%sec%}
-	msgbox Pressed special shortcut
+	global NumHotkeys
+
+	sec := HotkeyList[NumHotkeys].hks
+	if (sec == "") {
+		msgbox (Special) secondary keybind must not be empty...
+	} else {
+		msgbox Pressed special shortcut
+		;Send, {%sec%}
+	}
+	
 	return
 }
 
