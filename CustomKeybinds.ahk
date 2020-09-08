@@ -27,17 +27,13 @@
 ; 68  048   Numpad8/NumpadUp
 ; 69  049   Numpad9/NumpadPgUp
 ;--------- TO-DO ------------
-; - [DONE] Microsoft teams mute to special (drop down menu?) a new shortcut?
-; - Implement UI Switch to toggle ; iter through types
+; - Implement UI Switch to toggle for iter ; iter through types
 ; - Add content to help menu
 ; 	- Link to documentation
-; - [DONE?] Look into removing prefix as we may want to block some original functions
-; 	- [DONE]Might have to block/remove prefix as "~" original function is removed
-; - [DONE]Add option to use thumb2 over thumb1
-; - [DONE?]Add option to use Tab, or multi keys (Shift+B)
-; 	- [DONE] Enable use of Tab
-; 	- [DONE] Added restriction for (SPECIAL) if secondary is empty
-; - [DONE] Clean up EnableHotkeys() -- redundant code
+; - [DONE] Bug with dropdown list shortcuts not updating GUI.
+; - holding shift + b down
+; - [DONE] Enable secondary for microsoft mute
+; 	- If secondary, combine for MSTEAMS. If only primary, solo for MSTEAMS
 ;----------------------------
 ; Build list of "End Keys" for Input command
 EXTRA_KEY_LIST := "{Escape}"	; DO NOT REMOVE! - Used to quit binding
@@ -68,7 +64,7 @@ DefaultHKObject := {hkp: "", typep: "", hks: "", types: ""}
 ; Misc vars
 Title := "Custom Keybinds"
 DisplayVar := ["Shortcut1", "Shortcut2", "Shortcut3", "Shortcut4", "Shortcut5", "Shortcut6", "Shortcut7", "Shortcut8", "Shortcut9", "Shortcut10", "Shortcut11"]
-DisplayDefault := ["i", "[", "j", "Shift + B"]
+DisplayDefault := ["i", "[", "j", "N/A"]
 DisplayFN := ["J", "K", "L", "U", "I", "O", "7"]
 ININame := BuildIniName()
 HotkeyList := []
@@ -78,7 +74,6 @@ NumHotkeys := 12
 global typeCounter := 0
 
 ; Create the GUI, using a Loop feature that auto updates the GUI
-;Gui, 1: Add, Text,, This demo allows you to bind up to %NumHotkeys% Hotkeys and test them.`nHotkeys are remembered between runs.
 general .= "Welcome to "
 general .= title
 general .= "!`n"
@@ -99,8 +94,6 @@ Gui, 1: Add, Text, cBlack x11 y65, %important%
 Gui, 1: Font, s10 normal, Segoe UI
 Gui, 1: Add, Text, cBlack yp+20 x60, Primary
 Gui, 1: Add, Text, cBlack yp xp+125, Secondary
-;Gui, 1: Add, Radio, vLaptop gLaptop yp xp+150, Laptop only
-;Gui, 1: Add, Radio, vSwap gSwap yp xp+100, Swap Thumbs
 Gui, 1: Add, Radio, vModGroup gModCheck Group yp xp+150 , Middle
 Gui, 1: Add, Radio, gModCheck yp xp+70 Checked , Thumb1
 Gui, 1: Add, Radio, gModCheck yp xp+80 , Thumb2
@@ -147,14 +140,11 @@ Loop % NumHotkeys {
 		Gui, 1: Font, s8, Segoe UI
 		Gui, 1: Add, Edit, Disabled vHotkeyName1%A_Index% w80 yp-1 xp+60 , None
 		Gui, 1: Font, s10, Segoe UI
-		Gui, 1: Add, Text, cBlack y%ypos% xp+90, =
+		Gui, 1: Add, Text, cBlack y%ypos% xp+87, =/+
 		Gui, 1: Font, s8, Segoe UI
-		Gui, 1: Add, Edit, Disabled vHotkeyName2%A_Index% w80 yp-1 xp+25, None
+		Gui, 1: Add, Edit, Disabled vHotkeyName2%A_Index% w80 yp-1 xp+28, None
 		Gui, 1: Add, DropDownList, vSpecialChoice gSpecialChoice AltSubmit yp xp+100, Custom|MSTeam Mute
 	}
-	;Gui, 1: Add, Button, gBind vBind%A_Index% yp-1 xp+110, Set Hotkey
-	;Gui, 1: Add, Button, gReset vReset%A_Index% xp+90, Reset Key
-	;Gui, Add, Checkbox, vBlock%A_Index% gOptionChanged xp+30 yp
 	ypos += 25
 }
 
@@ -175,11 +165,11 @@ return ;
 	xx += 10
 	yy += 10
 	DisableHotkeys()
-	helpText .= "To edit your keybinds, click on 'Set Primary'.`n"
-	helpText .= "Click 'Set Secondary' if you would like a secondary keybind for the same shortcut.`n"
-	helpText .= "If you would like to reset the keybinds, click on 'Reset Key'"
+	editText .= "To edit your keybinds, click on 'Set Primary'.`n"
+	editText .= "Click 'Set Secondary' if you would like a secondary keybind for the same shortcut.`n"
+	editText .= "If you would like to reset the keybinds, click on 'Reset Key'"
 	Gui, 2: Font, s8 bold, Segoe UI
-	Gui, 2: Add, Text, cBlack y5, %helpText%
+	Gui, 2: Add, Text, cBlack y5, %editText%
 	Gui, 2: Font, s10 normal, Segoe UI
 	Gui, 2: Add, Text, cBlack yp+45 x185, Primary
 	Gui, 2: Add, Text, cBlack yp xp+120, Secondary
@@ -202,10 +192,8 @@ return ;
 			Gui, 2: Add, Text, cBlack x5 y%ypos%, (Special)
 			Gui, 2: Font, s8, Segoe UI
 			Gui, 2: Add, Edit, Disabled vHotkeyName1%A_Index% w110 xp+155 y%ypos%, None
-			Gui, 2: Font, s10, Segoe UI
-			Gui, 2: Add, Text, cBlack xp+115 y%ypos%, =
 			Gui, 2: Font, s8, Segoe UI
-			Gui, 2: Add, Edit, Disabled vHotkeyName2%A_Index% w110 xp+15 yp-1, None
+			Gui, 2: Add, Edit, Disabled vHotkeyName2%A_Index% w110 xp+130 yp-1, None
 			Gui, 2: Font,, 
 			Gui, 2: Add, Button, gBind1 vBind1%A_Index% yp-1 xp+110, Set Primary
 			Gui, 2: Add, Button, gBind2 vBind2%A_Index% xp+70, Set Secondary 
@@ -214,7 +202,7 @@ return ;
 		ypos += 25
 	}
 
-	Gui, 2: Add, Button, gClose vClose xp+25 yp+35, Save
+	Gui, 2: Add, Button, gCloseEdit vCloseEdit xp+25 yp+35, Save
 	height := (NumHotkeys * 30) + 60
 	Gui, 2: Show, Center w650 h%height% x%xx% y%yy%, Edit Keybinds
 
@@ -230,12 +218,30 @@ Reload:
 	return
 
 Help:
+	Gui, 1: +LastFound
+	WinGetPos, xxx, yyy
+	xxx += 100
+	yyy += 100
+	helpText .= "Quick Defintion. blag blagh blah`n"
+	helpText .= "`n"
+	helpText .= "`n"
+	Gui, 4: Add, Text, ,%helpText%
+	Gui, 4: -Border +AlwaysOnTop
+	Gui, 4: Add, Button, gCloseHelp vCloseHelp xp+25 yp+35, Close
+
+
+	;Gui, 4: Show, x%xxx% y%yyy%
 	msgbox Hi! I'm Help
 	return
 
-Close:
-2GuiClose:
+CloseHelp:
 	helpText := ""
+	Gui, 4: Destroy
+	return
+
+CloseEdit:
+2GuiClose:
+	editText := ""
 	EnableHotkeys()
 	Gui, 2: Destroy ; We cannot recreate the same gui. We must destroy or redisplay it.
 	return
@@ -317,12 +323,13 @@ DoHotkey10: ; Connection Tool
 	;Send, {j}
 	msgbox You pressed Hotkey 10.
 	return
-DoHotkey11: ; Special
+DoHotkey11: ; Center tool
 	;soundbeep
+	;centerTool()
 	msgbox You pressed Hotkey 11.
 	;teamsmute()
 	return
-DoHotkey12:
+DoHotkey12: ; Special 
 	special()
 	return
 TeamsMute:
@@ -345,18 +352,6 @@ OptionChanged(){
 	SaveSettings()
 
 	return
-}
-
-getRadio() {
-	global modCheck
-
-	if (modCheck == 1) {
-		return 1
-	} else if (modCheck == 2) {
-		return 2
-	} else if (modCheck == 3) {
-		return 3
-	}
 }
 
 ModifyOptions() {
@@ -527,7 +522,7 @@ Bind(ctrlnum, select){
 			msgbox 'Enter' key is reserved for special keybind. Exiting...
 		} else if (prevent == 2) {
 			msgbox %detectedkey% is restricted with special keybind. Exiting...
-		} else if (specialCheck == 2 && select == 2) {
+		} else if (specialCheck == 3 && select == 2) {
 			msgbox Please select 'Custom' from drop down list if you want to use secondary keybind for (Special)
 		} else if (clash) {
 			; Ask if want to overwrite - Need Shortcut, keybind(s) OLD/NEW
@@ -614,7 +609,11 @@ EnableHotkeys(){
 			} else {
 				if (hkp != "") {
 					if (specialCheck == 2) {
-						hotkey, %hkp%, TeamsMute, ON
+						if (hks != "") {
+							hotkey, %hkp% & %hks%, TeamsMute, ON
+						} else {
+							hotkey, %hkp%, TeamsMute, ON
+						}
 					} else {
 						hotkey, %hkp%, DoHotkey%A_Index%, ON
 					}
@@ -633,6 +632,8 @@ EnableHotkeys(){
 ; Disables User-Defined Hotkeys
 DisableHotkeys(){
 	global HotkeyList
+	global NumHotkeys
+	global specialCheck
 
 	Loop % HotkeyList.MaxIndex(){
 		status := HotkeyList[A_Index].status
@@ -643,22 +644,36 @@ DisableHotkeys(){
 			FileAppend hkp: %hkp%`n, *
 			FileAppend hks: %hks%`n, *
 			prefix := BuildPrefix(HotkeyList[A_Index])
-			if (hkp != "" && hks != "") {
-				;Msgbox % "REMOVING: " prefix "," hk
-				hotkey, %hkp%, DoHotkey%A_Index%, OFF
-				hotkey, %hks%, DoHotkey%A_Index%, OFF
-				;hotkey, %prefix%%hks%, DoHotkey%A_Index%, OFF
-				;hotkey, %hk%, DoHotkey%A_Index%, OFF
-			} else if (hkp != "") {
-				;Msgbox % "REMOVING: " prefix "," hk
-				;hotkey, %prefix%%hkp%, DoHotkey%A_Index%, OFF
-				hotkey, %hkp%, DoHotkey%A_Index%, OFF
-				;hotkey, %hk%, DoHotkey%A_Index%, OFF
-			} else if (hks != "") {
-				;FileAppend special: %hks%`n, *
-				;hotkey, %hkp%, DoHotkey%A_Index%, OFF
-				hotkey, %hks%, DoHotkey%A_Index%, OFF
+			if (A_Index != NumHotkeys) {
+				if (hkp != "" && hks != "") {
+					;Msgbox % "REMOVING: " prefix "," hk
+					hotkey, %hkp%, DoHotkey%A_Index%, OFF
+					hotkey, %hks%, DoHotkey%A_Index%, OFF
+					;hotkey, %prefix%%hks%, DoHotkey%A_Index%, OFF
+					;hotkey, %hk%, DoHotkey%A_Index%, OFF
+				} else if (hkp != "") {
+					;Msgbox % "REMOVING: " prefix "," hk
+					;hotkey, %prefix%%hkp%, DoHotkey%A_Index%, OFF
+					hotkey, %hkp%, DoHotkey%A_Index%, OFF
+					;hotkey, %hk%, DoHotkey%A_Index%, OFF
+				} else if (hks != "") {
+					;FileAppend special: %hks%`n, *
+					;hotkey, %hkp%, DoHotkey%A_Index%, OFF
+					hotkey, %hks%, DoHotkey%A_Index%, OFF
+				}
+			} else {
+				if (hkp != "") {
+					if (specialCheck == 2) {
+						if (hks != "") {
+							hotkey, %hkp% & %hks%, TeamsMute, OFF
+						} else {
+							hotkey, %hkp%, TeamsMute, OFF
+						}
+					}
+					hotkey, %hkp%, DoHotkey%A_Index%, OFF
+				}
 			}
+			
 			HotkeyList[A_Index].status := 0
 		}
 	}
@@ -775,7 +790,6 @@ UpdateHotkeyControls(){
 	global HotkeyList
 	global modCheck
 	global specialCheck
-	global NumHotkeys
 
 	GuiControl, 1: , Laptop, %laptopCheck%
 	GuiControl, 1: , Swap, %swapCheck%
@@ -788,33 +802,11 @@ UpdateHotkeyControls(){
 		tmp1 := BuildHotKeyName(HotkeyList[A_Index].hkp, HotkeyList[A_index].typep)
 		tmp2 := BuildHotKeyName(HotkeyList[A_Index].hks, HotkeyList[A_index].types)
 
-		if (specialCheck == 2 && A_Index == NumHotkeys) {
-			GuiControl, 1: , Hotkeyname2%A_Index%, None
-			GuiControl, 2: , Hotkeyname2%A_Index%, None
-		} else {
-			if (HotkeyList[A_Index].hkp != "" && HotkeyList[A_Index].hks != ""){
-				GuiControl, 1: , HotkeyName1%A_Index%, %tmp1%
-				GuiControl, 1: , HotkeyName2%A_Index%, %tmp2%
-				GuiControl, 2: , HotkeyName1%A_Index%, %tmp1%
-				GuiControl, 2: , HotkeyName2%A_Index%, %tmp2%
-			} else if (HotkeyList[A_Index].hkp != "") {
-				GuiControl, 1: , HotkeyName1%A_Index%, %tmp1%
-				GuiControl, 1: , HotkeyName2%A_Index%, None
-				GuiControl, 2: , HotkeyName1%A_Index%, %tmp1%
-				GuiControl, 2: , HotkeyName2%A_Index%, None
-			} else if (HotkeyList[A_Index].hks != "") {
-				GuiControl, 1: , HotkeyName1%A_Index%, None
-				GuiControl, 1: , HotkeyName2%A_Index%, %tmp2%
-				GuiControl, 2: , HotkeyName1%A_Index%, None
-				GuiControl, 2: , HotkeyName2%A_Index%, %tmp2%
-			} else {
-				GuiControl, 1: , HotkeyName1%A_Index%, None
-				GuiControl, 1: , HotkeyName2%A_Index%, None
-				GuiControl, 2: , HotkeyName1%A_Index%, None
-				GuiControl, 2: , HotkeyName2%A_Index%, None
-			}
-		}
-		
+		GuiControl, 1: , HotkeyName1%A_Index%, %tmp1%
+		GuiControl, 1: , HotkeyName2%A_Index%, %tmp2%
+		GuiControl, 2: , HotkeyName1%A_Index%, %tmp1%
+		GuiControl, 2: , HotkeyName2%A_Index%, %tmp2%
+	
 		;tmp := HotkeyList[A_Index].block
 		;GuiControl,, Block%A_Index%, %tmp%
 	}
@@ -848,45 +840,50 @@ BuildHotkeyString(str, type := 0){
 BuildHotKeyName(hk, ctrltype){
 	outstr := ""
 	;stringupper, hk, hk
-	if (ctrltype == 4) { ; RESERVERD FOR SPECIAL
-		if (hk == "xbutton1") {
-			outstr := "Thumb2"
-		} else if (hk == "xbutton2") {
-			outstr := "Thumb1"
-		} else if (hk == "enter") {
-			outstr := "Enter"
-		} else {
-			stringupper, hk, hk
-			outstr := hk
+	if (hk != "") {
+		if (ctrltype == 4) { ; RESERVERD FOR SPECIAL
+			if (hk == "xbutton1") {
+				outstr := "Thumb2"
+			} else if (hk == "xbutton2") {
+				outstr := "Thumb1"
+			} else if (hk == "enter") {
+				outstr := "Enter"
+			} else {
+				stringupper, hk, hk
+				outstr := hk
+			}
+		} else  {
+			if (ctrltype == 1) {
+				outstr := "Middle + "
+				tmp2 := substr(hk, 12)
+				if (tmp2 == "xbutton1") { ; handle thumb2 paired with m,x1,x2
+					tmp2 := "Thumb2"
+				} else if (tmp2 == "xbutton2") {
+					tmp2 := "Thumb1"
+				}
+			} else if (ctrltype == 2) {
+				outstr := "Thumb1 + "
+				tmp2 := substr(hk, 12)
+				if (tmp2 == "xbutton1") {
+					tmp2 := "Thumb2"
+				} else if (tmp2 == "xbutton2") {
+					tmp2 := "Thumb1"
+				}
+			} else if (ctrltype == 3) {
+				outstr := "Thumb2 + "
+				tmp2 := substr(hk, 12)
+				if (tmp2 == "xbutton1") {
+					tmp2 := "Thumb2"
+				} else if (tmp2 == "xbutton2") {
+					tmp2 := "Thumb1"
+				}
+			}
+			outstr .= tmp2
 		}
-	} else  {
-		if (ctrltype == 1) {
-			outstr := "Middle + "
-			tmp2 := substr(hk, 12)
-			if (tmp2 == "xbutton1") { ; handle thumb2 paired with m,x1,x2
-				tmp2 := "Thumb2"
-			} else if (tmp2 == "xbutton2") {
-				tmp2 := "Thumb1"
-			}
-		} else if (ctrltype == 2) {
-			outstr := "Thumb1 + "
-			tmp2 := substr(hk, 12)
-			if (tmp2 == "xbutton1") {
-				tmp2 := "Thumb2"
-			} else if (tmp2 == "xbutton2") {
-				tmp2 := "Thumb1"
-			}
-		} else if (ctrltype == 3) {
-			outstr := "Thumb2 + "
-			tmp2 := substr(hk, 12)
-			if (tmp2 == "xbutton1") {
-				tmp2 := "Thumb2"
-			} else if (tmp2 == "xbutton2") {
-				tmp2 := "Thumb1"
-			}
-		}
-		outstr .= tmp2
+	} else {
+		outstr := "None"
 	}
+
 	return outstr
 }
 
@@ -953,6 +950,30 @@ teamsmute() {
 	WinActivate ahk_id, %TID%
 	Sleep, 200
 	Send, ^+m
+	return
+}
+
+centerTool() {
+	global HotkeyList
+
+	if (HotkeyList[11].hkp != "") {
+		first := substr(HotkeyList[11].hkp, 1, 8)
+		second := substr(HotkeyList[11].hkp, 12)
+	} else if (HotkeyList[11].hks != "") {
+		first := substr(HotkeyList[11].hks, 1, 8)
+		second := substr(HotkeyList[11].hks, 12)
+	}
+	
+	if (GetkeyState(%first%, "p") && GetKeyState(%second%, "p")) {
+		HoldKey := !HoldKey
+	}
+	
+	if (HoldKey) {
+		Send, {Shift DOWN}{b DOWN}
+	} else {
+		Send, {Shift UP}{b UP}
+	}
+
 	return
 }
 
