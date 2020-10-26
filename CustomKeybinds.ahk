@@ -78,7 +78,7 @@ general .= "Welcome to "
 general .= title
 general .= "!`n"
 general .= "Press the shortcuts below to apply types or to select tool.`n"
-general .= "If you do not have extra mouse buttons, check 'Middle' box. Otherwise select your preferred thumb button.`n"
+general .= "If you do not have extra mouse buttons, check 'Middle' box. Otherwise select your preferred thumb button`n"
 general .= "To edit/setup shortcuts, go to File -> Edit Keybinds."
 important .= "Please do not close this window for the script to work in the background!"
 ;general .= "General Info`n"
@@ -144,7 +144,6 @@ Loop % NumHotkeys {
 		Gui, 1: Font, s8, Segoe UI
 		Gui, 1: Add, Edit, Disabled vHotkeyName2%A_Index% w80 yp-1 xp+28, None
 		Gui, 1: Add, DropDownList, vSpecialChoice gSpecialChoice AltSubmit yp xp+100, Custom|MSTeam Mute
-		;Gui, 1: Add, Text, cBlack, *Select your choice for (Special)
 	}
 	ypos += 25
 }
@@ -223,12 +222,12 @@ Help:
 	WinGetPos, xxx, yyy
 	xxx += 100
 	yyy += 100
-	helpText .= "Quick Defintion. blag blagh blah`n"
-	helpText .= "`n"
-	helpText .= "`n"
+	helpText .= "Welcome to FLIDE 3D LG Helper v2.0`n"
+	helpText .= "Please visit the documentation for further information.`n"
+	helpText .= "If you still require further assistance, please reach out to Billy Yu. @bilyu`n"
 	Gui, 4: Add, Text, ,%helpText%
-	;Gui, 4: -Border +AlwaysOnTop
-	Gui, 4: Add, Button, gCloseHelp vCloseHelp xp+25 yp+35, Close
+	Gui, 4: +AlwaysOnTop
+	Gui, 4: Add, Button, gCloseHelp vCloseHelp xp+5 yp+50, Close
 
 
 	Gui, 4: Show, x%xxx% y%yyy%
@@ -312,31 +311,31 @@ DoHotkey7: ; Type Guide
 	return
 DoHotkey8: ; Spline
 	;soundbeep
-	;Send, {i}
-	msgbox You pressed Hotkey 8.
+	Send, {i}
+	;msgbox You pressed Hotkey 8.
 	return
 DoHotkey9: ; Reverse Direction
 	;soundbeep
-	;Send, {[}
-	msgbox You pressed Hotkey 9.
+	Send, {[}
+	;msgbox You pressed Hotkey 9.
 	return
 DoHotkey10: ; Connection Tool
 	;soundbeep
-	;Send, {j}
-	msgbox You pressed Hotkey 10.
+	Send, {j}
+	;msgbox You pressed Hotkey 10.
 	return
 DoHotkey11: ; Center tool
 	;soundbeep
 	;centerTool()
-	msgbox You pressed Hotkey 11.
+	;msgbox You pressed Hotkey 11.
 	;teamsmute()
 	return
 DoHotkey12: ; Special 
 	special()
 	return
 TeamsMute:
-	;teamsmute()
-	msgbox TEAMSMUTE
+	teamsmute()
+	;msgbox TEAMSMUTE
 	return
 
 ; Something changed - rebuild
@@ -513,6 +512,10 @@ Bind(ctrlnum, select){
 				}
 			}
 			if (StripPrefix(HotkeyList[A_Index].hkp) == StripPrefix(tmp.hk) || StripPrefix(HotkeyList[A_Index].hks) == StripPrefix(tmp.hk)){
+				prehkp := HotkeyList[A_Index].hkp
+				prehks := HotkeyList[A_Index].hks
+				pretmp := tmp.hk
+				FileAppend Pre: %prehkp% | %prehks% | %pretmp%, *
 				clash := 1
 			}
 		}
@@ -708,6 +711,8 @@ SaveSettings(){
 	global modCheck
 	global specialCheck
 
+	;iniwrite, %swapCheck%, %ININame%, Version, swap
+	;iniwrite, %laptopCheck%, %ININame%, Version, laptop
 	iniwrite, %modCheck%, %ININame%, Version, radio
 	iniwrite, %specialCheck%, %ININame%, Version, special
 	Loop % HotkeyList.MaxIndex(){
@@ -737,8 +742,17 @@ LoadSettings(){
 	global modCheck
 	global specialCheck
 
+	;IniRead, laptopValue, %ININame%, Version, laptop
+	;IniRead, swapValue, %ININame%, Version, swap
 	IniRead, radioValue, %ININame%, Version, radio
 	IniRead, specialValue, %ININame%, Version, special
+	if (laptopValue != "ERROR") {
+		laptopCheck := laptopValue
+	}
+
+	if (swapValue != "ERROR") {
+		swapCheck := swapValue
+	}
 
 	if (radioValue != "ERROR") {
 		modCheck := radioValue
@@ -841,6 +855,7 @@ BuildHotKeyName(hk, ctrltype){
 			}
 		} else  {
 			tmp2 := substr(hk, 12)
+			;stringupper, tmp2, tmp2
 			if (ctrltype == 1) {
 				outstr := "Middle + "
 				if (tmp2 == "XBUTTON1") { ; handle thumb2 paired with m,x1,x2
@@ -875,6 +890,10 @@ BuildHotKeyName(hk, ctrltype){
 #If BindMode ; This is will allow xbutton1 and enter to be solo keybinds
 	xbutton1::
 	xbutton2::
+		HKControlType := 4
+		HKSecondaryInput := A_ThisHotkey
+		Send {Escape}
+		return
 	enter::
 		HKControlType := 4
 		HKSecondaryInput := A_ThisHotkey
@@ -906,8 +925,8 @@ BuildIniName(){
 
 shortcut(x) {
 	y := x + 1
-	;Send, .1%y%
-	msgbox Pressed shortcut %x%
+	Send, .1%y%
+	;msgbox Pressed shortcut %x%
 	return
 }
 
@@ -919,8 +938,8 @@ special() {
 	if (sec == "") {
 		msgbox (Special) secondary keybind must not be empty...
 	} else {
-		msgbox Pressed special shortcut. Sending { %sec% }
-		;Send, {%sec%}
+		;msgbox Pressed special shortcut. Sending {%sec%}
+		Send, {%sec%}
 	}
 	
 	return
